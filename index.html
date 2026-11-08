@@ -1,0 +1,1290 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#082f49" />
+    <title>GPunch</title>
+    <style>
+      :root {
+        --ink: #eafaff;
+        --muted: #a9d4df;
+        --line: rgba(220, 250, 255, 0.22);
+        --glass: rgba(219, 247, 255, 0.11);
+        --glass2: rgba(219, 247, 255, 0.17);
+        --aqua: #67e8f9;
+        --deep: #082f49;
+        --shadow: 0 22px 65px rgba(0, 12, 28, 0.35);
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        min-height: 100%;
+        font-family:
+          Inter,
+          ui-sans-serif,
+          system-ui,
+          -apple-system,
+          "Segoe UI",
+          sans-serif;
+        color: var(--ink);
+      }
+      body {
+        min-height: 100vh;
+        background:
+          radial-gradient(
+            ellipse at 15% 10%,
+            rgba(34, 211, 238, 0.28),
+            transparent 38%
+          ),
+          radial-gradient(
+            ellipse at 85% 80%,
+            rgba(14, 165, 233, 0.25),
+            transparent 38%
+          ),
+          linear-gradient(135deg, #061b33 0%, #0b4660 48%, #082f49 100%);
+        overflow-x: hidden;
+      }
+      body:before,
+      body:after {
+        content: "";
+        position: fixed;
+        pointer-events: none;
+        border-radius: 50%;
+        filter: blur(2px);
+        opacity: 0.35;
+      }
+      body:before {
+        width: 480px;
+        height: 480px;
+        left: -220px;
+        bottom: -210px;
+        background: radial-gradient(
+          circle,
+          rgba(103, 232, 249, 0.28),
+          transparent 68%
+        );
+      }
+      body:after {
+        width: 560px;
+        height: 560px;
+        right: -260px;
+        top: -260px;
+        background: radial-gradient(
+          circle,
+          rgba(125, 211, 252, 0.25),
+          transparent 68%
+        );
+      }
+      button,
+      select {
+        font: inherit;
+      }
+      .app {
+        width: min(920px, 100%);
+        margin: auto;
+        padding: 22px clamp(14px, 4vw, 34px) 40px;
+        position: relative;
+        z-index: 1;
+      }
+      .topbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 14px;
+        margin: 8px 0 26px;
+      }
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 11px;
+      }
+      .brand-mark {
+        width: 39px;
+        height: 39px;
+        border-radius: 14px;
+        background: linear-gradient(
+          145deg,
+          rgba(255, 255, 255, 0.32),
+          rgba(103, 232, 249, 0.12)
+        );
+        border: 1px solid var(--line);
+        display: grid;
+        place-items: center;
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35);
+      }
+      .brand h1 {
+        font-size: 19px;
+        letter-spacing: 0.02em;
+        margin: 0;
+        font-weight: 700;
+      }
+      .brand small {
+        display: block;
+        color: var(--muted);
+        font-size: 11px;
+        letter-spacing: 0.13em;
+        text-transform: uppercase;
+        margin-top: 2px;
+      }
+      .icon-btn {
+        width: 44px;
+        height: 44px;
+        border: 1px solid var(--line);
+        border-radius: 15px;
+        color: var(--ink);
+        background: var(--glass);
+        backdrop-filter: blur(18px);
+        -webkit-backdrop-filter: blur(18px);
+        display: grid;
+        place-items: center;
+        cursor: pointer;
+      }
+      .icon-btn:active,
+      .tab:active,
+      .primary:active {
+        transform: scale(0.98);
+      }
+      h2 {
+        font-size: clamp(25px, 5vw, 34px);
+        margin: 0 0 7px;
+        letter-spacing: -0.035em;
+      }
+      .subheading {
+        color: var(--muted);
+        margin: 0 0 23px;
+        font-size: 14px;
+      }
+      .glass {
+        background: linear-gradient(
+          145deg,
+          rgba(235, 251, 255, 0.16),
+          rgba(197, 239, 255, 0.055)
+        );
+        border: 1px solid var(--line);
+        box-shadow:
+          var(--shadow),
+          inset 0 1px 0 rgba(255, 255, 255, 0.22);
+        backdrop-filter: blur(22px);
+        -webkit-backdrop-filter: blur(22px);
+        border-radius: 25px;
+      }
+      .tabs {
+        display: flex;
+        gap: 7px;
+        padding: 6px;
+        width: 100%;
+        max-width: 100%;
+        margin: 0 auto 17px;
+        border-radius: 17px;
+        background: rgba(1, 24, 42, 0.3);
+        border: 1px solid var(--line);
+      }
+      .tab {
+        flex: 1;
+        min-width: 0;
+        text-align: center;
+        border: 0;
+        border-radius: 12px;
+        padding: 12px 22px;
+        color: var(--muted);
+        background: transparent;
+        cursor: pointer;
+        font-weight: 650;
+        transition: 0.2s;
+      }
+      .tab.active {
+        color: #063047;
+        background: linear-gradient(135deg, #b9f4fb, #5ee7f5);
+        box-shadow: 0 5px 18px rgba(34, 211, 238, 0.2);
+      }
+      .view {
+        touch-action: pan-y;
+        animation: fade 0.22s ease;
+      }
+      #punchView {
+        touch-action: none;
+        overscroll-behavior: contain;
+      }
+      @keyframes fade {
+        from {
+          opacity: 0.35;
+          transform: translateY(5px);
+        }
+        to {
+          opacity: 1;
+          transform: none;
+        }
+      }
+      .date-card {
+        padding: 18px 21px;
+        margin-bottom: 15px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+      }
+      .eyebrow {
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.13em;
+        color: var(--muted);
+        font-weight: 700;
+      }
+      .today {
+        font-size: 18px;
+        font-weight: 650;
+        margin-top: 5px;
+      }
+      .target {
+        text-align: right;
+      }
+      .target strong {
+        font-size: 21px;
+        display: block;
+        letter-spacing: 0.04em;
+      }
+      .target small {
+        color: var(--muted);
+        font-size: 11px;
+      }
+      .punch-card {
+        padding: clamp(20px, 5vw, 34px);
+        text-align: center;
+      }
+      .identity-fields {
+        max-width: 420px;
+        margin: 0 auto 18px;
+        padding: 15px 16px 16px;
+        text-align: left;
+        border-radius: 18px;
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14);
+      }
+      .identity-fields .field-label {
+        display: block;
+        margin: 0 0 7px 2px;
+        color: rgba(234, 250, 255, 0.82);
+        font-size: 12px;
+        font-weight: 650;
+        letter-spacing: 0.025em;
+      }
+      .identity-fields .field {
+        display: block;
+        width: 100%;
+        min-height: 48px;
+        margin: 0;
+        padding: 12px 14px;
+        border: 1px solid rgba(220, 250, 255, 0.2);
+        border-radius: 12px;
+        background: rgba(3, 35, 55, 0.28);
+        color: var(--ink);
+        font-size: 16px;
+        line-height: 1.3;
+        box-shadow: inset 0 1px 3px rgba(0, 12, 28, 0.12);
+        transition:
+          border-color 0.18s,
+          background 0.18s,
+          box-shadow 0.18s;
+      }
+      .identity-fields .field::placeholder {
+        color: rgba(169, 212, 223, 0.62);
+      }
+      .identity-fields .field:focus {
+        border-color: var(--aqua);
+        background: rgba(3, 35, 55, 0.4);
+        box-shadow: 0 0 0 3px rgba(103, 232, 249, 0.12);
+      }
+      .identity-fields .name-field-wrap {
+        margin-top: 13px;
+      }
+      .identity-fields .name-field-wrap[hidden] {
+        display: none;
+      }
+      .clock-label {
+        color: var(--muted);
+        font-size: 12px;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        margin-bottom: 17px;
+      }
+      .clock-row {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: clamp(8px, 3vw, 20px);
+        flex-wrap: wrap;
+      }
+      .time-picker {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+      }
+      .wheel {
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 0;
+        overflow: hidden;
+        user-select: none;
+        -webkit-user-select: none;
+        touch-action: none;
+        overscroll-behavior: contain;
+        cursor: ns-resize;
+        width: clamp(78px, 19vw, 112px);
+        height: 112px;
+        flex: 0 0 clamp(78px, 19vw, 112px);
+        border-radius: 19px;
+        border: 1px solid rgba(210, 250, 255, 0.28);
+        background: linear-gradient(
+          180deg,
+          rgba(255, 255, 255, 0.13),
+          rgba(255, 255, 255, 0.04)
+        );
+        color: #f2fdff;
+        outline: none;
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18);
+      }
+      .wheel:focus {
+        border-color: var(--aqua);
+        box-shadow: 0 0 0 3px rgba(103, 232, 249, 0.15);
+      }
+      .wheel .wheel-item {
+        height: 28px;
+        line-height: 28px;
+        flex: 0 0 28px;
+        width: 100%;
+        text-align: center;
+        font-size: 18px;
+        font-weight: 550;
+        color: rgba(234, 250, 255, 0.42);
+        transform: scale(0.88);
+        transition:
+          opacity 0.08s,
+          transform 0.08s;
+      }
+      .wheel .wheel-item.selected {
+        height: 48px;
+        line-height: 48px;
+        flex-basis: 48px;
+        font-size: clamp(37px, 9vw, 51px);
+        font-weight: 800;
+        color: #f2fdff;
+        transform: scale(1);
+      }
+      .wheel.disabled {
+        opacity: 0.62;
+        cursor: default;
+        touch-action: pan-y;
+      }
+      .wheel.disabled .wheel-item {
+        pointer-events: none;
+      }
+      .colon {
+        font-size: 42px;
+        font-weight: 700;
+        color: #b6edf5;
+        transform: translateY(-3px);
+      }
+      .time-hint {
+        font-size: 12px;
+        color: var(--muted);
+        margin: 12px 0 21px;
+      }
+      .primary {
+        border: 0;
+        border-radius: 19px;
+        padding: 12px 12px;
+        width: clamp(78px, 19vw, 112px);
+        height: 112px;
+        flex: 0 0 clamp(78px, 19vw, 112px);
+        display: grid;
+        place-items: center;
+        color: #063047;
+        font-weight: 800;
+        font-size: 15px;
+        letter-spacing: 0.02em;
+        background: linear-gradient(135deg, #c7f9ff, #5ee7f5);
+        box-shadow: 0 10px 25px rgba(34, 211, 238, 0.2);
+        cursor: pointer;
+        transition: 0.15s;
+      }
+      .primary.out {
+        background: linear-gradient(135deg, #ffe5ad, #ffb86b);
+        color: #47270a;
+        box-shadow: 0 10px 25px rgba(251, 146, 60, 0.16);
+      }
+      .primary:disabled {
+        opacity: 0.55;
+        cursor: wait;
+      }
+      .status {
+        min-height: 20px;
+        margin-top: 14px;
+        color: var(--muted);
+        font-size: 12px;
+      }
+      .status.error {
+        color: #fecaca;
+      }
+      .status.success {
+        color: #a7f3d0;
+      }
+      .section-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: end;
+        margin: 7px 2px 15px;
+        gap: 12px;
+      }
+      .section-head h2 {
+        margin: 0;
+      }
+      .section-head span {
+        font-size: 12px;
+        color: var(--muted);
+      }
+      .records {
+        display: grid;
+        gap: 11px;
+      }
+      .record {
+        padding: 17px 19px;
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 12px;
+        align-items: center;
+      }
+      .record-date {
+        font-weight: 700;
+      }
+      .record-date small {
+        display: block;
+        color: var(--muted);
+        font-weight: 400;
+        margin-top: 4px;
+        font-size: 12px;
+      }
+      .record-times {
+        display: flex;
+        gap: 15px;
+        flex-wrap: wrap;
+        margin-top: 12px;
+      }
+      .record-times span {
+        font-size: 12px;
+        color: var(--muted);
+      }
+      .record-times b {
+        color: var(--ink);
+        font-weight: 650;
+        margin-left: 5px;
+      }
+      .duration {
+        text-align: right;
+        font-size: 19px;
+        font-weight: 750;
+        color: #b8f5fc;
+      }
+      .duration small {
+        display: block;
+        font-size: 10px;
+        color: var(--muted);
+        font-weight: 500;
+        margin-top: 3px;
+      }
+      .empty {
+        padding: 34px 20px;
+        text-align: center;
+        color: var(--muted);
+      }
+      .scrim {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 10, 20, 0.48);
+        z-index: 5;
+        opacity: 0;
+        visibility: hidden;
+        transition: 0.2s;
+      }
+      .scrim.show {
+        opacity: 1;
+        visibility: visible;
+      }
+      .drawer {
+        position: fixed;
+        z-index: 6;
+        top: 0;
+        right: 0;
+        height: 100dvh;
+        width: min(360px, 88vw);
+        padding: 26px 22px;
+        background: linear-gradient(
+          160deg,
+          rgba(13, 65, 87, 0.97),
+          rgba(5, 30, 51, 0.98)
+        );
+        border-left: 1px solid var(--line);
+        box-shadow: -20px 0 60px rgba(0, 0, 0, 0.3);
+        transform: translateX(105%);
+        transition: 0.25s;
+      }
+      .drawer.open {
+        transform: translateX(0);
+      }
+      .drawer-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 30px;
+      }
+      .drawer h3 {
+        margin: 0;
+        font-size: 21px;
+      }
+      .field-label {
+        display: block;
+        color: var(--muted);
+        font-size: 12px;
+        margin: 0 0 9px;
+      }
+      .field {
+        width: 100%;
+        border: 1px solid var(--line);
+        border-radius: 13px;
+        background: rgba(255, 255, 255, 0.08);
+        padding: 13px 14px;
+        color: var(--ink);
+        font-size: 17px;
+        outline: none;
+      }
+      .field:focus {
+        border-color: var(--aqua);
+      }
+      .field-help {
+        font-size: 11px;
+        color: var(--muted);
+        line-height: 1.5;
+        margin: 9px 0 17px;
+      }
+      .drawer .primary {
+        width: 100%;
+        padding: 12px;
+      }
+      .api-note {
+        margin-top: 25px;
+        padding: 13px;
+        border: 1px solid var(--line);
+        border-radius: 13px;
+        color: var(--muted);
+        font-size: 11px;
+        line-height: 1.6;
+        overflow-wrap: anywhere;
+      }
+      @media (min-width: 700px) {
+        .punch-card {
+          padding: 42px;
+        }
+        .date-card {
+          padding: 20px 25px;
+        }
+        .records {
+          grid-template-columns: 1fr 1fr;
+        }
+        .record {
+          min-height: 118px;
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        * {
+          animation: none !important;
+          transition: none !important;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app">
+      <header class="topbar">
+        <div class="brand">
+          <div class="brand-mark">〰</div>
+          <div>
+            <h1>GPunch</h1>
+            <small>Time • Records</small>
+          </div>
+        </div>
+        <button class="icon-btn" id="menuBtn" aria-label="Open menu">
+          <svg
+            width="22"
+            height="22"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.8"
+            stroke-linecap="round">
+            <path d="M4 7h16M4 12h16M4 17h16" />
+          </svg>
+        </button>
+      </header>
+
+      <main>
+        <h2 id="pageHeading">Record your time</h2>
+        <p class="subheading" id="pageSubheading">
+          A calm, clear view of your workday.
+        </p>
+        <div class="glass identity-fields">
+          <label class="field-label" for="usernameInput">User ID</label>
+          <input
+            class="field"
+            id="usernameInput"
+            type="text"
+            autocomplete="username"
+            placeholder="Enter your User ID" />
+          <div class="name-field-wrap" id="nameFieldWrap" hidden>
+            <label class="field-label name-label" for="nameInput">Name</label>
+            <input
+              class="field"
+              id="nameInput"
+              type="text"
+              autocomplete="name"
+              placeholder="Enter your name to register" />
+          </div>
+        </div>
+        <nav class="tabs" aria-label="Pages">
+          <button class="tab active" id="punchTab" aria-selected="true">
+            Punch
+          </button>
+          <button class="tab" id="recordsTab" aria-selected="false">
+            Records
+          </button>
+        </nav>
+
+        <section class="view" id="punchView">
+          <div class="glass date-card">
+            <div>
+              <div class="eyebrow">Today</div>
+              <div class="today" id="todayText">—</div>
+            </div>
+            <div class="target">
+              <strong id="targetTime">--:--</strong
+              ><small>Target swipe-out</small>
+            </div>
+          </div>
+          <div class="glass punch-card">
+            <div class="clock-label" id="clockLabel">Select punch-in time</div>
+            <div class="clock-row">
+              <div class="time-picker">
+                <div
+                  class="wheel"
+                  id="hourPicker"
+                  role="spinbutton"
+                  aria-label="Hour"
+                  tabindex="0"></div>
+                <span class="colon">:</span>
+                <div
+                  class="wheel"
+                  id="minutePicker"
+                  role="spinbutton"
+                  aria-label="Minute"
+                  tabindex="0"></div>
+              </div>
+              <button class="primary" id="punchBtn">Punch</button>
+            </div>
+            <div class="time-hint" id="timeHint">
+              Scroll the hour and minute wheels to adjust the time.
+            </div>
+            <div
+              class="status"
+              id="status"
+              role="status"
+              aria-live="polite"></div>
+          </div>
+        </section>
+
+        <section class="view" id="recordsView" hidden>
+          <div class="section-head">
+            <h2>Recent records</h2>
+            <span>Last 30 days</span>
+          </div>
+          <div class="records" id="recordsList">
+            <div class="glass empty">Loading your records…</div>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <div class="scrim" id="scrim"></div>
+    <aside class="drawer" id="drawer" aria-label="Settings" aria-hidden="true">
+      <div class="drawer-head">
+        <h3>Settings</h3>
+        <button class="icon-btn" id="closeMenu" aria-label="Close menu">
+          ✕
+        </button>
+      </div>
+      <label class="field-label" for="dutyInput">Duty Hours</label>
+      <input
+        class="field"
+        id="dutyInput"
+        type="number"
+        min="0.25"
+        max="24"
+        step="0.01"
+        placeholder="e.g. 9.15" />
+      <p class="field-help">
+        Enter duty hours in HH.MM format (for example, 9.15 means 9 hours and 15
+        minutes). This setting is stored locally in this browser.
+      </p>
+      <button class="primary" id="saveDuty">Save duty hours</button>
+      <div class="api-note">
+        <b>API routes used</b><br />POST /user/login<br />POST /user/register<br />POST
+        /record/create<br />PATCH /record/update<br />GET /record/all
+      </div>
+    </aside>
+
+    <script>
+      ;(() => {
+        const API_BASE = "https://gpunch.onrender.com/gpunch/v1"
+        const TOKEN_KEY = "gpunch_jwt"
+        const USER_KEY = "gpunch_user_id"
+        const $ = (id) => document.getElementById(id)
+        const state = {
+          dutyHours: 9.15,
+          record: null,
+          records: [],
+          page: "punch",
+          busy: false,
+          token: localStorage.getItem(TOKEN_KEY) || "",
+          userId: localStorage.getItem(USER_KEY) || "",
+        }
+        const wheelValues = { hour: 0, minute: 0 }
+        const wheelLimits = { hour: 24, minute: 60 }
+
+        const pad = (n) => String(n).padStart(2, "0")
+        const now = new Date()
+        const localDate = (d) =>
+          `${pad(d.getDate())}-${pad(d.getMonth() + 1)}-${d.getFullYear()}`
+        const timeNow = () =>
+          `${pad(new Date().getHours())}:${pad(new Date().getMinutes())}`
+        const toMinutes = (t) => {
+          if (!t || !/^\d{1,2}:\d{2}$/.test(t)) return null
+          const [h, m] = t.split(":").map(Number)
+          return h <= 23 && m <= 59 ? h * 60 + m : null
+        }
+        const fmtMinutes = (n) =>
+          `${pad(Math.floor(n / 60) % 24)}:${pad(n % 60)}`
+        const decimalHoursToMinutes = (value) => {
+          // Interpret 9.15 as 9 hours + 15 minutes (HH.MM notation), not 9.15 decimal hours.
+          const s = String(value)
+          const [h, m = "0"] = s.split(".")
+          return Math.max(
+            0,
+            Number(h || 0) * 60 + Number((m + "00").slice(0, 2)),
+          )
+        }
+        const targetFrom = (swipeIn) => {
+          const start = toMinutes(swipeIn)
+          return start === null
+            ? "--:--"
+            : fmtMinutes(
+                (start + decimalHoursToMinutes(state.dutyHours)) % 1440,
+              )
+        }
+        class ApiError extends Error {
+          constructor(status, message) {
+            super(message)
+            this.status = status
+          }
+        }
+        const api = async (path, options = {}, authenticated = true) => {
+          const headers = {
+            "Content-Type": "application/json",
+            ...(options.headers || {}),
+          }
+          if (authenticated && state.token)
+            headers.Authorization = `Bearer ${state.token}`
+          const response = await fetch(`${API_BASE}${path}`, {
+            ...options,
+            headers,
+          })
+          const bodyText =
+            response.status === 204 ? "" : await response.text().catch(() => "")
+          let data = null
+          if (bodyText) {
+            try {
+              data = JSON.parse(bodyText)
+            } catch {
+              data = bodyText
+            }
+          }
+          if (!response.ok) {
+            const message =
+              typeof data === "string"
+                ? data
+                : data?.message || data?.error || response.statusText
+            throw new ApiError(response.status, `${response.status} ${message}`)
+          }
+          return data
+        }
+        function extractToken(data) {
+          return (
+            data?.token ||
+            data?.jwt ||
+            data?.accessToken ||
+            data?.data?.token ||
+            data?.data?.jwt ||
+            data?.data?.accessToken ||
+            ""
+          )
+        }
+        function storeSession(token, userId) {
+          if (!token)
+            throw new Error(
+              "The login/register response did not contain a JWT token.",
+            )
+          state.token = token
+          state.userId = userId
+          localStorage.setItem(TOKEN_KEY, token)
+          localStorage.setItem(USER_KEY, userId)
+        }
+        function showNameField(show) {
+          $("nameFieldWrap").hidden = !show
+          if (!show) $("nameInput").value = ""
+        }
+        async function authenticateUser() {
+          const userId = $("usernameInput").value.trim()
+          const name = $("nameInput").value.trim()
+          if (!userId) throw new Error("Please enter your User ID.")
+          try {
+            const login = await api(
+              "/user/login",
+              { method: "POST", body: JSON.stringify({ userId }) },
+              false,
+            )
+            const token = extractToken(login)
+            if (token) {
+              storeSession(token, userId)
+              showNameField(false)
+              return
+            }
+            throw new Error("Login response did not contain a JWT token.")
+          } catch (error) {
+            const notFound =
+              error.status === 404 ||
+              /user.*not found|not found.*user|user does not exist/i.test(
+                error.message,
+              )
+            if (!notFound) throw error
+            if (!name) {
+              showNameField(true)
+              $("nameInput").focus()
+              throw new Error("User ID not found. Enter your name to register.")
+            }
+            const registration = await api(
+              "/user/register",
+              { method: "POST", body: JSON.stringify({ userId, name }) },
+              false,
+            )
+            let token = extractToken(registration)
+            if (!token) {
+              const login = await api(
+                "/user/login",
+                { method: "POST", body: JSON.stringify({ userId }) },
+                false,
+              )
+              token = extractToken(login)
+            }
+            storeSession(token, userId)
+            showNameField(false)
+          }
+        }
+        function makeSelectedDateTime() {
+          const d = new Date()
+          d.setHours(wheelValues.hour, wheelValues.minute, 0, 0)
+          return d.toISOString()
+        }
+        function timeForDisplay(value) {
+          if (!value) return "--:--"
+          if (typeof value === "string" && /^\d{1,2}:\d{2}$/.test(value))
+            return value
+          const d = new Date(value)
+          return Number.isNaN(d.getTime())
+            ? String(value)
+            : `${pad(d.getHours())}:${pad(d.getMinutes())}`
+        }
+        function setStatus(message, type = "") {
+          $("status").textContent = message
+          $("status").className = `status ${type}`
+        }
+        function renderWheel(kind) {
+          const el = $(kind + "Picker")
+          const count = wheelLimits[kind],
+            value = wheelValues[kind]
+          if (!el.children.length) {
+            ;[-1, 0, 1].forEach((offset) => {
+              const item = document.createElement("div")
+              item.className = "wheel-item" + (offset === 0 ? " selected" : "")
+              el.appendChild(item)
+            })
+          }
+          ;[-1, 0, 1].forEach((offset, index) => {
+            const item = el.children[index]
+            item.textContent = pad((value + offset + count) % count)
+          })
+          el.setAttribute("aria-valuemin", "0")
+          el.setAttribute("aria-valuemax", String(count - 1))
+          el.setAttribute("aria-valuenow", String(value))
+          el.setAttribute("aria-valuetext", pad(value))
+          el.classList.toggle("disabled", state.record && state.record.swipeOut)
+        }
+        function changeWheel(kind, amount) {
+          const count = wheelLimits[kind]
+          wheelValues[kind] =
+            (wheelValues[kind] + (amount % count) + count) % count
+          renderWheel(kind)
+        }
+        function attachWheel(kind) {
+          const el = $(kind + "Picker")
+          let lastY = 0,
+            accumulated = 0,
+            moved = false
+          const stepPx = 9 // Smaller threshold makes each wheel increment respond quickly while dragging.
+          el.addEventListener(
+            "wheel",
+            (e) => {
+              e.preventDefault()
+              if (!(state.record && state.record.swipeOut))
+                changeWheel(kind, e.deltaY > 0 ? 1 : -1)
+            },
+            { passive: false },
+          )
+          el.addEventListener("pointerdown", (e) => {
+            if (state.record && state.record.swipeOut) return
+            lastY = e.clientY
+            accumulated = 0
+            moved = false
+            el.setPointerCapture(e.pointerId)
+          })
+          el.addEventListener("pointermove", (e) => {
+            if (
+              !el.hasPointerCapture(e.pointerId) ||
+              (state.record && state.record.swipeOut)
+            )
+              return
+            const delta = e.clientY - lastY
+            if (Math.abs(delta) > 0) moved = true
+            accumulated += delta
+            // Apply every small movement immediately; no end-of-gesture batching.
+            while (Math.abs(accumulated) >= stepPx) {
+              const direction = accumulated < 0 ? 1 : -1
+              changeWheel(kind, direction)
+              accumulated += accumulated < 0 ? stepPx : -stepPx
+            }
+            lastY = e.clientY
+          })
+          el.addEventListener("pointerup", (e) => {
+            if (el.hasPointerCapture(e.pointerId))
+              el.releasePointerCapture(e.pointerId)
+          })
+          el.addEventListener("pointercancel", (e) => {
+            if (el.hasPointerCapture(e.pointerId))
+              el.releasePointerCapture(e.pointerId)
+          })
+          el.addEventListener("keydown", (e) => {
+            if (e.key === "ArrowUp" || e.key === "ArrowDown") {
+              e.preventDefault()
+              if (!(state.record && state.record.swipeOut))
+                changeWheel(kind, e.key === "ArrowUp" ? -1 : 1)
+            }
+          })
+        }
+        function initPickers() {
+          const [h, m] = timeNow().split(":")
+          wheelValues.hour = Number(h)
+          wheelValues.minute = Number(m)
+          renderWheel("hour")
+          renderWheel("minute")
+          attachWheel("hour")
+          attachWheel("minute")
+        }
+        const selectedTime = () =>
+          `${pad(wheelValues.hour)}:${pad(wheelValues.minute)}`
+        function updatePunchUI() {
+          const r = state.record
+          const done = !!(r && r.swipeIn)
+          const out = !!(r && r.swipeOut)
+          $("punchBtn").textContent = out ? "Done" : done ? "Out" : "Punch"
+          $("punchBtn").classList.toggle("out", done && !out)
+          $("punchBtn").disabled = state.busy || out
+          $("hourPicker").classList.toggle("disabled", out)
+          $("minutePicker").classList.toggle("disabled", out)
+          $("hourPicker").setAttribute("aria-disabled", String(out))
+          $("minutePicker").setAttribute("aria-disabled", String(out))
+          $("clockLabel").textContent = out
+            ? "Your workday is complete"
+            : done
+              ? "Swipe-in recorded"
+              : "Select punch-in time"
+          $("timeHint").textContent = out
+            ? `Swipe in ${r.swipeIn} · Swipe out ${r.swipeOut}`
+            : done
+              ? `Swipe-in time: ${r.swipeIn}. Tap Out when you finish.`
+              : "Scroll the hour and minute wheels to adjust the time."
+          $("targetTime").textContent = done ? targetFrom(r.swipeIn) : "--:--"
+        }
+        function normalizeRecord(data) {
+          if (!data) return null
+          const candidate =
+            data.record || data.data?.record || data.data || data
+          if (!candidate || typeof candidate !== "object") return null
+          return {
+            ...candidate,
+            swipeIn: timeForDisplay(candidate.swipeIn),
+            swipeOut: candidate.swipeOut
+              ? timeForDisplay(candidate.swipeOut)
+              : null,
+          }
+        }
+        async function loadDuty() {
+          // Duty hours remain a local UI setting; no duty-time endpoint was supplied.
+          $("dutyInput").value = state.dutyHours
+        }
+        async function loadToday() {
+          if (!state.token) {
+            updatePunchUI()
+            return
+          }
+          try {
+            const data = await api("/record/all")
+            const rows = Array.isArray(data)
+              ? data
+              : data?.records || data?.data?.records || data?.data || []
+            state.records = Array.isArray(rows) ? rows : []
+            const today = localDate(new Date())
+            const found = state.records.find((r) => r.date === today)
+            if (found) state.record = normalizeRecord(found)
+          } catch (e) {
+            console.warn("Could not load today's record:", e.message)
+          }
+          updatePunchUI()
+        }
+        async function loadRecords() {
+          $("recordsList").innerHTML =
+            '<div class="glass empty">Loading your records…</div>'
+          try {
+            if (!state.token)
+              throw new Error(
+                "Tap Punch and enter your username to sign in first.",
+              )
+            const data = await api("/record/all")
+            const rows = Array.isArray(data)
+              ? data
+              : data?.records || data?.data?.records || data?.data || []
+            state.records = Array.isArray(rows) ? rows.map(normalizeRecord) : []
+            renderRecords()
+          } catch (e) {
+            $("recordsList").innerHTML =
+              `<div class="glass empty">${e.message}</div>`
+            console.warn("Could not load records:", e.message)
+          }
+        }
+        function duration(inTime, outTime) {
+          const a = toMinutes(inTime),
+            b = toMinutes(outTime)
+          if (a === null || b === null) return "--:--"
+          return fmtMinutes((b - a + 1440) % 1440)
+        }
+        function renderRecords() {
+          const list = $("recordsList")
+          list.innerHTML = ""
+          if (!state.records.length) {
+            list.innerHTML =
+              '<div class="glass empty">No swipe records found for the last 30 days.</div>'
+            return
+          }
+          state.records
+            .slice()
+            .sort((a, b) => {
+              const parse = (s) => {
+                const [d, m, y] = String(s || "")
+                  .split("-")
+                  .map(Number)
+                return new Date(y, m - 1, d).getTime() || 0
+              }
+              return parse(b.date) - parse(a.date)
+            })
+            .forEach((r) => {
+              const card = document.createElement("article")
+              card.className = "glass record"
+              const date = document.createElement("div")
+              const title = document.createElement("div")
+              title.className = "record-date"
+              title.textContent = r.date || "Unknown date"
+              const times = document.createElement("div")
+              times.className = "record-times"
+              ;[
+                ["In", r.swipeIn || "--:--"],
+                ["Out", r.swipeOut || "--:--"],
+              ].forEach(([label, value]) => {
+                const span = document.createElement("span")
+                span.textContent = label
+                const b = document.createElement("b")
+                b.textContent = value
+                span.appendChild(b)
+                times.appendChild(span)
+              })
+              date.append(title, times)
+              const dur = document.createElement("div")
+              dur.className = "duration"
+              dur.textContent =
+                r.swipeIn && r.swipeOut
+                  ? duration(r.swipeIn, r.swipeOut)
+                  : "--:--"
+              const small = document.createElement("small")
+              small.textContent = "Hours worked"
+              dur.appendChild(small)
+              card.append(date, dur)
+              list.appendChild(card)
+            })
+        }
+        async function punch() {
+          if (state.busy || (state.record && state.record.swipeOut)) return
+          state.busy = true
+          updatePunchUI()
+          setStatus("Signing in and saving punch…")
+          try {
+            if (!state.token) await authenticateUser()
+            else {
+              const enteredUser = $("usernameInput").value.trim()
+              if (enteredUser && enteredUser !== state.userId) {
+                state.token = ""
+                localStorage.removeItem(TOKEN_KEY)
+                state.record = null
+                await authenticateUser()
+              }
+            }
+            if (!state.record || !state.record.swipeIn) {
+              const payload = {
+                userId: state.userId,
+                date: localDate(new Date()),
+                swipeIn: makeSelectedDateTime(),
+              }
+              const result = await api("/record/create", {
+                method: "POST",
+                body: JSON.stringify(payload),
+              })
+              state.record = normalizeRecord(result) || {
+                ...payload,
+                swipeIn: selectedTime(),
+              }
+              showNameField(false)
+              setStatus("Swipe-in saved successfully.", "success")
+            } else {
+              const payload = {
+                date: localDate(new Date()),
+                swipeOut: makeSelectedDateTime(),
+              }
+              const result = await api("/record/update", {
+                method: "PATCH",
+                body: JSON.stringify(payload),
+              })
+              state.record = normalizeRecord(result) || {
+                ...state.record,
+                swipeOut: selectedTime(),
+              }
+              showNameField(false)
+              setStatus("Swipe-out saved successfully.", "success")
+              await loadRecords()
+            }
+          } catch (e) {
+            setStatus(`Could not save: ${e.message}`, "error")
+          } finally {
+            state.busy = false
+            updatePunchUI()
+          }
+        }
+        function setPage(page) {
+          state.page = page
+          const punch = page === "punch"
+          $("punchView").hidden = !punch
+          $("recordsView").hidden = punch
+          $("punchTab").classList.toggle("active", punch)
+          $("recordsTab").classList.toggle("active", !punch)
+          $("punchTab").setAttribute("aria-selected", String(punch))
+          $("recordsTab").setAttribute("aria-selected", String(!punch))
+          $("pageHeading").textContent = punch
+            ? "Make your punch"
+            : "Your attendance"
+          $("pageSubheading").textContent = punch
+            ? "A calm, clear view of your workday."
+            : "Your recent swipe history at a glance."
+          if (!punch) loadRecords()
+        }
+        function openDrawer(open) {
+          $("drawer").classList.toggle("open", open)
+          $("scrim").classList.toggle("show", open)
+          $("drawer").setAttribute("aria-hidden", String(!open))
+        }
+        $("punchTab").onclick = () => setPage("punch")
+        $("recordsTab").onclick = () => setPage("records")
+        $("punchBtn").onclick = punch
+        $("menuBtn").onclick = () => openDrawer(true)
+        $("closeMenu").onclick = () => openDrawer(false)
+        $("scrim").onclick = () => openDrawer(false)
+        $("saveDuty").onclick = () => {
+          const value = Number($("dutyInput").value)
+          if (!Number.isFinite(value) || value <= 0 || value > 24) {
+            alert("Enter duty hours in HH.MM format, for example 9.15.")
+            return
+          }
+          state.dutyHours = value
+          updatePunchUI()
+          openDrawer(false)
+        }
+        let touchX = 0,
+          touchY = 0
+        document.addEventListener(
+          "touchstart",
+          (e) => {
+            if (e.touches.length === 1) {
+              touchX = e.touches[0].clientX
+              touchY = e.touches[0].clientY
+            }
+          },
+          { passive: true },
+        )
+        document.addEventListener(
+          "touchend",
+          (e) => {
+            if (!touchX || $("drawer").classList.contains("open")) return
+            const dx = e.changedTouches[0].clientX - touchX,
+              dy = e.changedTouches[0].clientY - touchY
+            if (Math.abs(dx) > 65 && Math.abs(dx) > Math.abs(dy) * 1.25)
+              setPage(dx < 0 ? "records" : "punch")
+            touchX = 0
+            touchY = 0
+          },
+          { passive: true },
+        )
+        $("todayText").textContent = now.toLocaleDateString(undefined, {
+          weekday: "long",
+          day: "numeric",
+          month: "long",
+          year: "numeric",
+        })
+        $("usernameInput").value = state.userId
+        showNameField(false)
+        initPickers()
+        ;(async () => {
+          await loadDuty()
+          await loadToday()
+        })()
+      })()
+    </script>
+  </body>
+</html>
