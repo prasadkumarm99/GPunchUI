@@ -925,6 +925,7 @@
           const el = $(kind + "Picker")
           const count = wheelLimits[kind],
             value = wheelValues[kind]
+        
           if (!el.children.length) {
             ;[-1, 0, 1].forEach((offset) => {
               const item = document.createElement("div")
@@ -932,15 +933,18 @@
               el.appendChild(item)
             })
           }
+        
           ;[-1, 0, 1].forEach((offset, index) => {
             const item = el.children[index]
             item.textContent = pad((value + offset + count) % count)
           })
+        
           el.setAttribute("aria-valuemin", "0")
           el.setAttribute("aria-valuemax", String(count - 1))
           el.setAttribute("aria-valuenow", String(value))
           el.setAttribute("aria-valuetext", pad(value))
-          el.classList.toggle("disabled", state.record && state.record.swipeOut)
+        
+          el.classList.toggle("disabled", state.busy)
         }
         function changeWheel(kind, amount) {
           const count = wheelLimits[kind]
@@ -951,54 +955,53 @@
         function attachWheel(kind) {
           const el = $(kind + "Picker")
           let lastY = 0,
-            accumulated = 0,
-            moved = false
-          const stepPx = 9 // Smaller threshold makes each wheel increment respond quickly while dragging.
-          el.addEventListener(
-            "wheel",
-            (e) => {
-              e.preventDefault()
-              if (!(state.record && state.record.swipeOut))
-                changeWheel(kind, e.deltaY > 0 ? 1 : -1)
-            },
-            { passive: false },
-          )
+            accumulated = 0
+        
+          const stepPx = 9
+        
+          el.addEventListener("wheel", (e) => {
+            e.preventDefault()
+            if (!state.busy)
+              changeWheel(kind, e.deltaY > 0 ? 1 : -1)
+          }, { passive: false })
+        
           el.addEventListener("pointerdown", (e) => {
-            if (state.record && state.record.swipeOut) return
+            if (state.busy) return
+        
             lastY = e.clientY
             accumulated = 0
-            moved = false
             el.setPointerCapture(e.pointerId)
           })
+        
           el.addEventListener("pointermove", (e) => {
-            if (
-              !el.hasPointerCapture(e.pointerId) ||
-              (state.record && state.record.swipeOut)
-            )
-              return
+            if (!el.hasPointerCapture(e.pointerId) || state.busy) return
+        
             const delta = e.clientY - lastY
-            if (Math.abs(delta) > 0) moved = true
             accumulated += delta
-            // Apply every small movement immediately; no end-of-gesture batching.
+        
             while (Math.abs(accumulated) >= stepPx) {
               const direction = accumulated < 0 ? 1 : -1
               changeWheel(kind, direction)
               accumulated += accumulated < 0 ? stepPx : -stepPx
             }
+        
             lastY = e.clientY
           })
+        
           el.addEventListener("pointerup", (e) => {
             if (el.hasPointerCapture(e.pointerId))
               el.releasePointerCapture(e.pointerId)
           })
+        
           el.addEventListener("pointercancel", (e) => {
             if (el.hasPointerCapture(e.pointerId))
               el.releasePointerCapture(e.pointerId)
           })
+        
           el.addEventListener("keydown", (e) => {
             if (e.key === "ArrowUp" || e.key === "ArrowDown") {
               e.preventDefault()
-              if (!(state.record && state.record.swipeOut))
+              if (!state.busy)
                 changeWheel(kind, e.key === "ArrowUp" ? -1 : 1)
             }
           })
@@ -1018,23 +1021,31 @@
           const r = state.record
           const done = !!(r && r.swipeIn)
           const out = !!(r && r.swipeOut)
-          $("punchBtn").textContent = out ? "Done" : done ? "Out" : "Punch"
-          $("punchBtn").classList.toggle("out", done && !out)
-          $("punchBtn").disabled = state.busy || out
-          $("hourPicker").classList.toggle("disabled", out)
-          $("minutePicker").classList.toggle("disabled", out)
-          $("hourPicker").setAttribute("aria-disabled", String(out))
-          $("minutePicker").setAttribute("aria-disabled", String(out))
+        
+          $("punchBtn").textContent =
+            state.busy ? "Saving…" : done ? "Out" : "Punch"
+        
+          $("punchBtn").classList.toggle("out", done)
+          $("punchBtn").disabled = state.busy
+        
+          $("hourPicker").classList.toggle("disabled", state.busy)
+          $("minutePicker").classList.toggle("disabled", state.busy)
+        
+          $("hourPicker").setAttribute("aria-disabled", String(state.busy))
+          $("minutePicker").setAttribute("aria-disabled", String(state.busy))
+        
           $("clockLabel").textContent = out
-            ? "Your workday is complete"
+            ? "Swipe-out recorded · you can update it"
             : done
               ? "Swipe-in recorded"
               : "Select punch-in time"
+        
           $("timeHint").textContent = out
-            ? `Swipe in ${r.swipeIn} · Swipe out ${r.swipeOut}`
+            ? `Swipe in ${r.swipeIn} · Latest swipe out ${r.swipeOut}. Tap Out to update it.`
             : done
               ? `Swipe-in time: ${r.swipeIn}. Tap Out when you finish.`
               : "Scroll the hour and minute wheels to adjust the time."
+        
           $("targetTime").textContent = done ? targetFrom(r.swipeIn) : "--:--"
         }
         function normalizeRecord(data) {
@@ -1153,14 +1164,18 @@
             })
         }
         async function punch() {
-          if (state.busy || (state.record && state.record.swipeOut)) return
+          if (state.busy) return
+        
           state.busy = true
           updatePunchUI()
           setStatus("Signing in and saving punch…")
+        
           try {
-            if (!state.token) await authenticateUser()
-            else {
+            if (!state.token) {
+              await authenticateUser()
+            } else {
               const enteredUser = $("usernameInput").value.trim()
+        
               if (enteredUser && enteredUser !== state.userId) {
                 state.token = ""
                 localStorage.removeItem(TOKEN_KEY)
@@ -1168,41 +1183,52 @@
                 await authenticateUser()
               }
             }
+        
             if (!state.record || !state.record.swipeIn) {
               const payload = {
                 userId: state.userId,
                 date: localDate(new Date()),
-                swipeIn: makeSelectedDateTime(),
+                swipeIn: makeSelectedDateTime()
               }
+        
               const result = await api("/record/create", {
                 method: "POST",
-                body: JSON.stringify(payload),
+                body: JSON.stringify(payload)
               })
+        
               state.record = normalizeRecord(result) || {
                 ...payload,
-                swipeIn: selectedTime(),
+                swipeIn: selectedTime()
               }
+        
               showNameField(false)
               setStatus("Swipe-in saved successfully.", "success")
+        
             } else {
               const payload = {
                 date: localDate(new Date()),
-                swipeOut: makeSelectedDateTime(),
+                swipeOut: makeSelectedDateTime()
               }
+        
               const result = await api("/record/update", {
                 method: "PATCH",
-                body: JSON.stringify(payload),
+                body: JSON.stringify(payload)
               })
+        
               state.record = normalizeRecord(result) || {
                 ...state.record,
-                swipeOut: selectedTime(),
+                swipeOut: selectedTime()
               }
+        
               showNameField(false)
               setStatus("Swipe-out saved successfully.", "success")
+        
               await loadRecords()
             }
+        
           } catch (e) {
             setStatus(`Could not save: ${e.message}`, "error")
+        
           } finally {
             state.busy = false
             updatePunchUI()
