@@ -832,7 +832,6 @@
           el.setAttribute("aria-valuemax", String(count - 1))
           el.setAttribute("aria-valuenow", String(value))
           el.setAttribute("aria-valuetext", pad(value))
-          el.classList.toggle("disabled", state.record && state.record.swipeOut)
         }
         function changeWheel(kind, amount) {
           const count = wheelLimits[kind]
@@ -842,56 +841,59 @@
         }
         function attachWheel(kind) {
           const el = $(kind + "Picker")
-          let lastY = 0,
-            accumulated = 0,
-            moved = false
-          const stepPx = 9 // Smaller threshold makes each wheel increment respond quickly while dragging.
-          el.addEventListener(
-            "wheel",
-            (e) => {
-              e.preventDefault()
-              if (!(state.record && state.record.swipeOut))
-                changeWheel(kind, e.deltaY > 0 ? 1 : -1)
-            },
-            { passive: false },
-          )
+          let activePointer = null
+          let lastY = 0
+          let accumulated = 0
+          const stepPx = 12
+
+          // Mouse wheel / trackpad scrolling.
+          el.addEventListener("wheel", (e) => {
+            e.preventDefault()
+            const delta = Math.abs(e.deltaY) >= Math.abs(e.deltaX) ? e.deltaY : e.deltaX
+            if (delta === 0) return
+            changeWheel(kind, delta > 0 ? 1 : -1)
+          }, { passive: false })
+
+          // Click-and-drag on desktop and touch-drag on mobile.
           el.addEventListener("pointerdown", (e) => {
-            if (state.record && state.record.swipeOut) return
+            if (e.pointerType === "mouse" && e.button !== 0) return
+            activePointer = e.pointerId
             lastY = e.clientY
             accumulated = 0
-            moved = false
             el.setPointerCapture(e.pointerId)
+            e.preventDefault()
           })
+
           el.addEventListener("pointermove", (e) => {
-            if (
-              !el.hasPointerCapture(e.pointerId) ||
-              (state.record && state.record.swipeOut)
-            )
-              return
+            if (activePointer !== e.pointerId) return
             const delta = e.clientY - lastY
-            if (Math.abs(delta) > 0) moved = true
             accumulated += delta
-            // Apply every small movement immediately; no end-of-gesture batching.
             while (Math.abs(accumulated) >= stepPx) {
               const direction = accumulated < 0 ? 1 : -1
               changeWheel(kind, direction)
               accumulated += accumulated < 0 ? stepPx : -stepPx
             }
             lastY = e.clientY
+            e.preventDefault()
           })
-          el.addEventListener("pointerup", (e) => {
-            if (el.hasPointerCapture(e.pointerId))
-              el.releasePointerCapture(e.pointerId)
+
+          const stopDrag = (e) => {
+            if (activePointer !== e.pointerId) return
+            if (el.hasPointerCapture(e.pointerId)) el.releasePointerCapture(e.pointerId)
+            activePointer = null
+            accumulated = 0
+          }
+          el.addEventListener("pointerup", stopDrag)
+          el.addEventListener("pointercancel", stopDrag)
+          el.addEventListener("lostpointercapture", () => {
+            activePointer = null
+            accumulated = 0
           })
-          el.addEventListener("pointercancel", (e) => {
-            if (el.hasPointerCapture(e.pointerId))
-              el.releasePointerCapture(e.pointerId)
-          })
+
           el.addEventListener("keydown", (e) => {
             if (e.key === "ArrowUp" || e.key === "ArrowDown") {
               e.preventDefault()
-              if (!(state.record && state.record.swipeOut))
-                changeWheel(kind, e.key === "ArrowUp" ? -1 : 1)
+              changeWheel(kind, e.key === "ArrowUp" ? -1 : 1)
             }
           })
         }
@@ -914,8 +916,8 @@
           $("punchBtn").classList.toggle("out", done)
           $("punchBtn").disabled = state.busy
           // Keep the time wheel available so a later swipe-out can update the saved time.
-          $("hourPicker").classList.toggle("disabled", false)
-          $("minutePicker").classList.toggle("disabled", false)
+          $("hourPicker").classList.remove("disabled")
+          $("minutePicker").classList.remove("disabled")
           $("hourPicker").setAttribute("aria-disabled", "false")
           $("minutePicker").setAttribute("aria-disabled", "false")
           $("clockLabel").textContent = out
