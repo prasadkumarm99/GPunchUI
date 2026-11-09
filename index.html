@@ -286,10 +286,7 @@
         font-size: 16px;
         line-height: 1.3;
         box-shadow: inset 0 1px 3px rgba(0, 12, 28, 0.12);
-        transition:
-          border-color 0.18s,
-          background 0.18s,
-          box-shadow 0.18s;
+        transition: border-color 0.18s, background 0.18s, box-shadow 0.18s;
       }
       .identity-fields .field::placeholder {
         color: rgba(169, 212, 223, 0.62);
@@ -492,6 +489,22 @@
         font-weight: 750;
         color: #b8f5fc;
       }
+      .record-actions {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      .delete-record {
+        border: 1px solid rgba(254, 202, 202, .45);
+        background: rgba(239, 68, 68, .16);
+        color: #fecaca;
+        border-radius: 11px;
+        padding: 8px 11px;
+        cursor: pointer;
+        font-size: 12px;
+        font-weight: 650;
+      }
+      .delete-record:disabled { opacity: .55; cursor: wait; }
       .duration small {
         display: block;
         font-size: 10px;
@@ -638,24 +651,6 @@
         <p class="subheading" id="pageSubheading">
           A calm, clear view of your workday.
         </p>
-        <div class="glass identity-fields">
-          <label class="field-label" for="usernameInput">User ID</label>
-          <input
-            class="field"
-            id="usernameInput"
-            type="text"
-            autocomplete="username"
-            placeholder="Enter your User ID" />
-          <div class="name-field-wrap" id="nameFieldWrap" hidden>
-            <label class="field-label name-label" for="nameInput">Name</label>
-            <input
-              class="field"
-              id="nameInput"
-              type="text"
-              autocomplete="name"
-              placeholder="Enter your name to register" />
-          </div>
-        </div>
         <nav class="tabs" aria-label="Pages">
           <button class="tab active" id="punchTab" aria-selected="true">
             Punch
@@ -709,8 +704,8 @@
 
         <section class="view" id="recordsView" hidden>
           <div class="section-head">
-            <h2>Recent records</h2>
-            <span>Last 30 days</span>
+            <h2>Attendance records</h2>
+            <span>All records</span>
           </div>
           <div class="records" id="recordsList">
             <div class="glass empty">Loading your records…</div>
@@ -737,21 +732,17 @@
         step="0.01"
         placeholder="e.g. 9.15" />
       <p class="field-help">
-        Enter duty hours in HH.MM format (for example, 9.15 means 9 hours and 15
-        minutes). This setting is stored locally in this browser.
+        Enter duty hours in HH.MM format (for example, 9.15 means 9 hours and 15 minutes). This setting is stored locally in this browser.
       </p>
       <button class="primary" id="saveDuty">Save duty hours</button>
       <div class="api-note">
-        <b>API routes used</b><br />POST /user/login<br />POST /user/register<br />POST
-        /record/create<br />PATCH /record/update<br />GET /record/all
+        <b>API routes used</b><br />POST /record/create<br />PATCH /record/update<br />GET /record?date=DD-MM-YYYY or all<br />DELETE /record/delete/DD-MM-YYYY
       </div>
     </aside>
 
     <script>
       ;(() => {
         const API_BASE = "https://gpunch.onrender.com/gpunch/v1"
-        const TOKEN_KEY = "gpunch_jwt"
-        const USER_KEY = "gpunch_user_id"
         const $ = (id) => document.getElementById(id)
         const state = {
           dutyHours: 9.15,
@@ -759,8 +750,6 @@
           records: [],
           page: "punch",
           busy: false,
-          token: localStorage.getItem(TOKEN_KEY) || "",
-          userId: localStorage.getItem(USER_KEY) || "",
         }
         const wheelValues = { hour: 0, minute: 0 }
         const wheelLimits = { hour: 24, minute: 60 }
@@ -795,113 +784,19 @@
                 (start + decimalHoursToMinutes(state.dutyHours)) % 1440,
               )
         }
-        class ApiError extends Error {
-          constructor(status, message) {
-            super(message)
-            this.status = status
-          }
-        }
-        const api = async (path, options = {}, authenticated = true) => {
-          const headers = {
-            "Content-Type": "application/json",
-            ...(options.headers || {}),
-          }
-          if (authenticated && state.token)
-            headers.Authorization = `Bearer ${state.token}`
-          const response = await fetch(`${API_BASE}${path}`, {
-            ...options,
-            headers,
-          })
-          const bodyText =
-            response.status === 204 ? "" : await response.text().catch(() => "")
+        const api = async (path, options = {}) => {
+          const headers = { "Content-Type": "application/json", ...(options.headers || {}) }
+          const response = await fetch(`${API_BASE}${path}`, { ...options, headers })
+          const bodyText = response.status === 204 ? "" : await response.text().catch(() => "")
           let data = null
           if (bodyText) {
-            try {
-              data = JSON.parse(bodyText)
-            } catch {
-              data = bodyText
-            }
+            try { data = JSON.parse(bodyText) } catch { data = bodyText }
           }
           if (!response.ok) {
-            const message =
-              typeof data === "string"
-                ? data
-                : data?.message || data?.error || response.statusText
-            throw new ApiError(response.status, `${response.status} ${message}`)
+            const message = typeof data === "string" ? data : (data?.message || data?.error || response.statusText)
+            throw new Error(`${response.status} ${message}`)
           }
           return data
-        }
-        function extractToken(data) {
-          return (
-            data?.token ||
-            data?.jwt ||
-            data?.accessToken ||
-            data?.data?.token ||
-            data?.data?.jwt ||
-            data?.data?.accessToken ||
-            ""
-          )
-        }
-        function storeSession(token, userId) {
-          if (!token)
-            throw new Error(
-              "The login/register response did not contain a JWT token.",
-            )
-          state.token = token
-          state.userId = userId
-          localStorage.setItem(TOKEN_KEY, token)
-          localStorage.setItem(USER_KEY, userId)
-        }
-        function showNameField(show) {
-          $("nameFieldWrap").hidden = !show
-          if (!show) $("nameInput").value = ""
-        }
-        async function authenticateUser() {
-          const userId = $("usernameInput").value.trim()
-          const name = $("nameInput").value.trim()
-          if (!userId) throw new Error("Please enter your User ID.")
-          try {
-            const login = await api(
-              "/user/login",
-              { method: "POST", body: JSON.stringify({ userId }) },
-              false,
-            )
-            const token = extractToken(login)
-            if (token) {
-              storeSession(token, userId)
-              showNameField(false)
-              return
-            }
-            throw new Error("Login response did not contain a JWT token.")
-          } catch (error) {
-            const notFound =
-              error.status === 404 ||
-              /user.*not found|not found.*user|user does not exist/i.test(
-                error.message,
-              )
-            if (!notFound) throw error
-            if (!name) {
-              showNameField(true)
-              $("nameInput").focus()
-              throw new Error("User ID not found. Enter your name to register.")
-            }
-            const registration = await api(
-              "/user/register",
-              { method: "POST", body: JSON.stringify({ userId, name }) },
-              false,
-            )
-            let token = extractToken(registration)
-            if (!token) {
-              const login = await api(
-                "/user/login",
-                { method: "POST", body: JSON.stringify({ userId }) },
-                false,
-              )
-              token = extractToken(login)
-            }
-            storeSession(token, userId)
-            showNameField(false)
-          }
         }
         function makeSelectedDateTime() {
           const d = new Date()
@@ -910,12 +805,9 @@
         }
         function timeForDisplay(value) {
           if (!value) return "--:--"
-          if (typeof value === "string" && /^\d{1,2}:\d{2}$/.test(value))
-            return value
+          if (typeof value === "string" && /^\d{1,2}:\d{2}$/.test(value)) return value
           const d = new Date(value)
-          return Number.isNaN(d.getTime())
-            ? String(value)
-            : `${pad(d.getHours())}:${pad(d.getMinutes())}`
+          return Number.isNaN(d.getTime()) ? String(value) : `${pad(d.getHours())}:${pad(d.getMinutes())}`
         }
         function setStatus(message, type = "") {
           $("status").textContent = message
@@ -925,7 +817,6 @@
           const el = $(kind + "Picker")
           const count = wheelLimits[kind],
             value = wheelValues[kind]
-        
           if (!el.children.length) {
             ;[-1, 0, 1].forEach((offset) => {
               const item = document.createElement("div")
@@ -933,18 +824,15 @@
               el.appendChild(item)
             })
           }
-        
           ;[-1, 0, 1].forEach((offset, index) => {
             const item = el.children[index]
             item.textContent = pad((value + offset + count) % count)
           })
-        
           el.setAttribute("aria-valuemin", "0")
           el.setAttribute("aria-valuemax", String(count - 1))
           el.setAttribute("aria-valuenow", String(value))
           el.setAttribute("aria-valuetext", pad(value))
-        
-          el.classList.toggle("disabled", state.busy)
+          el.classList.toggle("disabled", state.record && state.record.swipeOut)
         }
         function changeWheel(kind, amount) {
           const count = wheelLimits[kind]
@@ -955,53 +843,54 @@
         function attachWheel(kind) {
           const el = $(kind + "Picker")
           let lastY = 0,
-            accumulated = 0
-        
-          const stepPx = 9
-        
-          el.addEventListener("wheel", (e) => {
-            e.preventDefault()
-            if (!state.busy)
-              changeWheel(kind, e.deltaY > 0 ? 1 : -1)
-          }, { passive: false })
-        
+            accumulated = 0,
+            moved = false
+          const stepPx = 9 // Smaller threshold makes each wheel increment respond quickly while dragging.
+          el.addEventListener(
+            "wheel",
+            (e) => {
+              e.preventDefault()
+              if (!(state.record && state.record.swipeOut))
+                changeWheel(kind, e.deltaY > 0 ? 1 : -1)
+            },
+            { passive: false },
+          )
           el.addEventListener("pointerdown", (e) => {
-            if (state.busy) return
-        
+            if (state.record && state.record.swipeOut) return
             lastY = e.clientY
             accumulated = 0
+            moved = false
             el.setPointerCapture(e.pointerId)
           })
-        
           el.addEventListener("pointermove", (e) => {
-            if (!el.hasPointerCapture(e.pointerId) || state.busy) return
-        
+            if (
+              !el.hasPointerCapture(e.pointerId) ||
+              (state.record && state.record.swipeOut)
+            )
+              return
             const delta = e.clientY - lastY
+            if (Math.abs(delta) > 0) moved = true
             accumulated += delta
-        
+            // Apply every small movement immediately; no end-of-gesture batching.
             while (Math.abs(accumulated) >= stepPx) {
               const direction = accumulated < 0 ? 1 : -1
               changeWheel(kind, direction)
               accumulated += accumulated < 0 ? stepPx : -stepPx
             }
-        
             lastY = e.clientY
           })
-        
           el.addEventListener("pointerup", (e) => {
             if (el.hasPointerCapture(e.pointerId))
               el.releasePointerCapture(e.pointerId)
           })
-        
           el.addEventListener("pointercancel", (e) => {
             if (el.hasPointerCapture(e.pointerId))
               el.releasePointerCapture(e.pointerId)
           })
-        
           el.addEventListener("keydown", (e) => {
             if (e.key === "ArrowUp" || e.key === "ArrowDown") {
               e.preventDefault()
-              if (!state.busy)
+              if (!(state.record && state.record.swipeOut))
                 changeWheel(kind, e.key === "ArrowUp" ? -1 : 1)
             }
           })
@@ -1021,86 +910,64 @@
           const r = state.record
           const done = !!(r && r.swipeIn)
           const out = !!(r && r.swipeOut)
-        
-          $("punchBtn").textContent =
-            state.busy ? "Saving…" : done ? "Out" : "Punch"
-        
+          $("punchBtn").textContent = state.busy ? "Saving…" : done ? "Out" : "Punch"
           $("punchBtn").classList.toggle("out", done)
           $("punchBtn").disabled = state.busy
-        
-          $("hourPicker").classList.toggle("disabled", state.busy)
-          $("minutePicker").classList.toggle("disabled", state.busy)
-        
-          $("hourPicker").setAttribute("aria-disabled", String(state.busy))
-          $("minutePicker").setAttribute("aria-disabled", String(state.busy))
-        
+          // Keep the time wheel available so a later swipe-out can update the saved time.
+          $("hourPicker").classList.toggle("disabled", false)
+          $("minutePicker").classList.toggle("disabled", false)
+          $("hourPicker").setAttribute("aria-disabled", "false")
+          $("minutePicker").setAttribute("aria-disabled", "false")
           $("clockLabel").textContent = out
             ? "Swipe-out recorded · you can update it"
             : done
               ? "Swipe-in recorded"
               : "Select punch-in time"
-        
           $("timeHint").textContent = out
             ? `Swipe in ${r.swipeIn} · Latest swipe out ${r.swipeOut}. Tap Out to update it.`
             : done
               ? `Swipe-in time: ${r.swipeIn}. Tap Out when you finish.`
               : "Scroll the hour and minute wheels to adjust the time."
-        
           $("targetTime").textContent = done ? targetFrom(r.swipeIn) : "--:--"
         }
         function normalizeRecord(data) {
           if (!data) return null
-          const candidate =
-            data.record || data.data?.record || data.data || data
+          const candidate = data.record || data.data?.record || data.data || data
           if (!candidate || typeof candidate !== "object") return null
-          return {
-            ...candidate,
-            swipeIn: timeForDisplay(candidate.swipeIn),
-            swipeOut: candidate.swipeOut
-              ? timeForDisplay(candidate.swipeOut)
-              : null,
-          }
+          return { ...candidate, swipeIn: timeForDisplay(candidate.swipeIn), swipeOut: candidate.swipeOut ? timeForDisplay(candidate.swipeOut) : null }
         }
         async function loadDuty() {
           // Duty hours remain a local UI setting; no duty-time endpoint was supplied.
           $("dutyInput").value = state.dutyHours
         }
+        function extractRows(data) {
+          const candidate = data?.records || data?.data?.records || data?.data || data
+          if (Array.isArray(candidate)) return candidate
+          if (candidate && typeof candidate === "object") return [candidate]
+          return []
+        }
         async function loadToday() {
-          if (!state.token) {
-            updatePunchUI()
-            return
-          }
+          state.record = null
           try {
-            const data = await api("/record/all")
-            const rows = Array.isArray(data)
-              ? data
-              : data?.records || data?.data?.records || data?.data || []
-            state.records = Array.isArray(rows) ? rows : []
             const today = localDate(new Date())
-            const found = state.records.find((r) => r.date === today)
+            const data = await api(`/record?date=${encodeURIComponent(today)}`)
+            const rows = extractRows(data)
+            const found = rows.find((r) => r && (!r.date || r.date === today)) || null
             if (found) state.record = normalizeRecord(found)
           } catch (e) {
             console.warn("Could not load today's record:", e.message)
+            setStatus(`Could not load today's record: ${e.message}`, "error")
           }
           updatePunchUI()
         }
         async function loadRecords() {
-          $("recordsList").innerHTML =
-            '<div class="glass empty">Loading your records…</div>'
+          $("recordsList").innerHTML = '<div class="glass empty">Loading your records…</div>'
           try {
-            if (!state.token)
-              throw new Error(
-                "Tap Punch and enter your username to sign in first.",
-              )
-            const data = await api("/record/all")
-            const rows = Array.isArray(data)
-              ? data
-              : data?.records || data?.data?.records || data?.data || []
-            state.records = Array.isArray(rows) ? rows.map(normalizeRecord) : []
+            const data = await api("/record?date=all")
+            state.records = extractRows(data).map(normalizeRecord).filter(Boolean)
             renderRecords()
           } catch (e) {
-            $("recordsList").innerHTML =
-              `<div class="glass empty">${e.message}</div>`
+            $("recordsList").innerHTML = `<div class="glass empty">${e.message}</div>`
             console.warn("Could not load records:", e.message)
           }
         }
@@ -1115,7 +982,7 @@
           list.innerHTML = ""
           if (!state.records.length) {
             list.innerHTML =
-              '<div class="glass empty">No swipe records found for the last 30 days.</div>'
+              '<div class="glass empty">No attendance records found.</div>'
             return
           }
           state.records
@@ -1159,76 +1026,58 @@
               const small = document.createElement("small")
               small.textContent = "Hours worked"
               dur.appendChild(small)
-              card.append(date, dur)
+              const actions = document.createElement("div")
+              actions.className = "record-actions"
+              const del = document.createElement("button")
+              del.className = "delete-record"
+              del.type = "button"
+              del.textContent = "Delete"
+              del.setAttribute("aria-label", `Delete record for ${r.date}`)
+              del.onclick = () => deleteRecord(r.date, del)
+              actions.append(dur, del)
+              card.append(date, actions)
               list.appendChild(card)
             })
         }
+        async function deleteRecord(date, button) {
+          if (!date || !confirm(`Delete the attendance record for ${date}?`)) return
+          button.disabled = true
+          button.textContent = "Deleting…"
+          try {
+            await api(`/record/delete/${encodeURIComponent(date)}`, { method: "DELETE" })
+            state.records = state.records.filter((r) => r.date !== date)
+            if (state.record?.date === date || date === localDate(new Date())) {
+              state.record = null
+              updatePunchUI()
+            }
+            renderRecords()
+            setStatus(`Record for ${date} deleted.`, "success")
+          } catch (e) {
+            button.disabled = false
+            button.textContent = "Delete"
+            alert(`Could not delete record: ${e.message}`)
+          }
+        }
         async function punch() {
           if (state.busy) return
-        
           state.busy = true
           updatePunchUI()
-          setStatus("Signing in and saving punch…")
-        
+          setStatus("Saving punch…")
           try {
-            if (!state.token) {
-              await authenticateUser()
-            } else {
-              const enteredUser = $("usernameInput").value.trim()
-        
-              if (enteredUser && enteredUser !== state.userId) {
-                state.token = ""
-                localStorage.removeItem(TOKEN_KEY)
-                state.record = null
-                await authenticateUser()
-              }
-            }
-        
             if (!state.record || !state.record.swipeIn) {
-              const payload = {
-                userId: state.userId,
-                date: localDate(new Date()),
-                swipeIn: makeSelectedDateTime()
-              }
-        
-              const result = await api("/record/create", {
-                method: "POST",
-                body: JSON.stringify(payload)
-              })
-        
-              state.record = normalizeRecord(result) || {
-                ...payload,
-                swipeIn: selectedTime()
-              }
-        
-              showNameField(false)
+              const payload = { date: localDate(new Date()), swipeIn: makeSelectedDateTime() }
+              const result = await api("/record/create", { method: "POST", body: JSON.stringify(payload) })
+              state.record = normalizeRecord(result) || { ...payload, swipeIn: selectedTime() }
               setStatus("Swipe-in saved successfully.", "success")
-        
             } else {
-              const payload = {
-                date: localDate(new Date()),
-                swipeOut: makeSelectedDateTime()
-              }
-        
-              const result = await api("/record/update", {
-                method: "PATCH",
-                body: JSON.stringify(payload)
-              })
-        
-              state.record = normalizeRecord(result) || {
-                ...state.record,
-                swipeOut: selectedTime()
-              }
-        
-              showNameField(false)
+              const payload = { date: localDate(new Date()), swipeOut: makeSelectedDateTime() }
+              const result = await api("/record/update", { method: "PATCH", body: JSON.stringify(payload) })
+              state.record = normalizeRecord(result) || { ...state.record, swipeOut: selectedTime() }
               setStatus("Swipe-out saved successfully.", "success")
-        
               await loadRecords()
             }
-        
           } catch (e) {
             setStatus(`Could not save: ${e.message}`, "error")
-        
           } finally {
             state.busy = false
             updatePunchUI()
@@ -1303,8 +1152,6 @@
           month: "long",
           year: "numeric",
         })
-        $("usernameInput").value = state.userId
-        showNameField(false)
         initPickers()
         ;(async () => {
           await loadDuty()
